@@ -22,7 +22,10 @@ echo "Starting SSH"
 mkdir -p /var/run/sshd
 echo "root:$ENV_SSH_PASSWD" | chpasswd
 sed -i 's/PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
-#/usr/sbin/sshd
+/usr/sbin/sshd
+
+echo "Starting libvirtd"
+libvirtd&
 
 echo "Dropping to shell"
 /bin/bash
