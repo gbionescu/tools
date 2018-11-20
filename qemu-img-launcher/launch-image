@@ -1,0 +1,33 @@
+show_help() {
+    echo "$0 -f image [-s secondary-image-size]"
+    echo "    -f image to use as hda"
+    echo "    -s image size to pass to qemu-img create to use as hdb"
+}
+
+while getopts "h?f:s:" opt; do
+    case "$opt" in
+    h|\?)
+        show_help
+        exit 0
+        ;;
+    f)  image_file=$OPTARG
+        ;;
+    s)  secondary_img_size=$OPTARG
+        ;;
+    esac
+done
+
+if [[ -z $image_file ]];
+then
+    echo "Please specify an image file"
+    exit 1
+else
+    echo "Using $image_file"
+fi
+
+if [[ ! -z $secondary_img_size ]];
+then
+    echo "Will create a secondary image of size $secondary_img_size"
+fi
+
+docker run -it --device /dev/kvm -v "$image_file":/the-image --privileged qemu-img-runner "$secondary_img_size"
