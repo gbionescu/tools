@@ -4,4 +4,4 @@ Container that launches QEMU using a given image file as HDA and creates an opti
 `./build.sh`
 
 ###### Run:
-./launch-image -f Image.img [-s 10G]
+`./launch-image -f Image.img [-s 10G]`
