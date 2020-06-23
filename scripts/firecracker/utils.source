@@ -1,0 +1,116 @@
+API_SOCK="/tmp/firecracker.socket"
+
+set_kernel() {
+    arch=`uname -m`
+    kernel_path=$1
+    echo "Set kernel to $kernel_path"
+
+    if [ ${arch} = "x86_64" ]; then
+    curl --unix-socket "$API_SOCK" -i \
+        -X PUT 'http://localhost/boot-source'   \
+        -H 'Accept: application/json'           \
+        -H 'Content-Type: application/json'     \
+        -d "{
+              \"kernel_image_path\": \"${kernel_path}\",
+              \"boot_args\": \"console=ttyS0 reboot=k panic=1 pci=off\"
+         }"
+    elif [ ${arch} = "aarch64" ]; then
+      curl --unix-socket "$API_SOCK" -i \
+        -X PUT 'http://localhost/boot-source'   \
+        -H 'Accept: application/json'           \
+        -H 'Content-Type: application/json'     \
+        -d "{
+              \"kernel_image_path\": \"${kernel_path}\",
+              \"boot_args\": \"keep_bootcon console=ttyS0 reboot=k panic=1 pci=off\"
+         }"
+    else
+        echo "Cannot run firecracker on $arch architecture!"
+        exit 1
+    fi
+}
+
+set_rootfs() {
+    rootfs_path=$1
+
+    echo "Set rootfs to $rootfs_path"
+
+    # Set rootfs
+    curl --unix-socket "$API_SOCK" -i \
+        -X PUT 'http://localhost/drives/rootfs' \
+        -H 'Accept: application/json'           \
+        -H 'Content-Type: application/json'     \
+        -d "{
+            \"drive_id\": \"rootfs\",
+            \"path_on_host\": \"${rootfs_path}\",
+            \"is_root_device\": true,
+            \"is_read_only\": false
+        }"
+}
+
+instance_start() {
+    curl --unix-socket "$API_SOCK" -i \
+        -X PUT 'http://localhost/actions'       \
+        -H 'Accept: application/json'          \
+        -H 'Content-Type: application/json'    \
+        -d '{
+                "action_type": "InstanceStart"
+            }'
+}
+
+create_vsock() {
+    vsock_id=$1
+    guest_cid=$2
+
+    echo "Setting vsock id $vsock_id"
+    echo "Setting guest cid $guest_cid"
+
+    curl --unix-socket "$API_SOCK" -i \
+        -X PUT 'http://localhost/vsock' \
+        -H "Accept: application/json" \
+        -H "Content-Type: application/json" \
+        -d '{
+                "vsock_id": "1",
+                "guest_cid": 3,
+                "uds_path": "./v.sock"
+            }'
+}
+
+create_netif() {
+    curl --unix-socket "$API_SOCK" -i \
+        -X PUT 'http://localhost/network-interfaces/eth0' \
+        -H "Accept: application/json" \
+        -H "Content-Type: application/json" \
+        -d '{
+                "iface_id": "eth0",
+                "guest_mac": "AA:FC:00:11:22:01",
+                "host_dev_name": "tap0"
+            }'
+}
+
+send_ctrlaltdel() {
+    curl --unix-socket "$API_SOCK" -i \
+        -X PUT "http://localhost/actions" \
+        -H  "accept: application/json" \
+        -H  "Content-Type: application/json" \
+        -d "{
+                 \"action_type\": \"SendCtrlAltDel\"
+            }"
+}
+
+set_vcpu_memsize() {
+    vcpus=$1
+    memsize=$2
+
+    echo "Setting vcpus $vcpus"
+    echo "Setting memsize $memsize"
+
+    curl --unix-socket "$API_SOCK" -i  \
+            -X PUT 'http://localhost/machine-config' \
+            -H 'Accept: application/json'            \
+            -H 'Content-Type: application/json'      \
+            -d "{
+                  \"vcpu_count\": $vcpus,
+                  \"mem_size_mib\": $memsize,
+                  \"ht_enabled\": false
+             }"
+}
