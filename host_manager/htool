@@ -2,8 +2,10 @@
 import argparse
 import json
 import sys
+import pathlib
+from pathlib import Path
 
-CACHE_LOC = "htool_data.json"
+CACHE_LOC = Path.home() / Path(".htool_data.json")
 
 def get_host(cache, identifier):
     for host in cache["data"]:
