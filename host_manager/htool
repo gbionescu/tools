@@ -1,0 +1,164 @@
+#!/usr/bin/env python3
+import argparse
+import json
+import sys
+
+CACHE_LOC = "htool_data.json"
+
+def get_host(cache, identifier):
+    for host in cache["data"]:
+        if host["name"] == identifier or host["address"] == identifier:
+            return host
+
+    return None
+
+def load_cache():
+    fcache = None
+    try:
+        fcache = json.load(open(CACHE_LOC))
+    except FileNotFoundError:
+        fcache = {}
+    except:
+        import traceback
+        traceback.print_exc()
+
+    if "data" not in fcache.keys():
+        fcache["data"] = []
+
+    return fcache
+
+def save_cache(data):
+    dest = open(CACHE_LOC, "w")
+    json.dump(data, dest)
+
+def handle_add(name, address, pem):
+    # Check for duplicates
+    fcache = load_cache()
+    if get_host(fcache, name):
+        print(f"Name {name} already exists")
+        sys.exit(1)
+
+    # Add new entry
+    new_host = {}
+    new_host["name"] = name
+    new_host["address"] = address
+    new_host["pem"] = pem
+
+    fcache["data"].append(new_host)
+
+    save_cache(fcache)
+
+def handle_list():
+    fcache = load_cache()
+
+    if len(fcache["data"]) == 0:
+        print("No entries")
+        sys.exit(0)
+
+    print("\n-> name - address [pem file]:")
+
+    # Read into a dict so that we list alphabetically
+    name_to_addr = {}
+    for host in fcache["data"]:
+        name_to_addr[host["name"]] = host
+
+    for name in sorted(name_to_addr.keys()):
+        crt_host = name_to_addr[name]
+        if crt_host["pem"]:
+            print("\t%s - %s %s" % (name, crt_host["address"], crt_host["pem"]))
+        else:
+            print("\t%s - %s" % (name, crt_host["address"]))
+
+
+def handle_rem(identifier):
+    fcache = load_cache()
+
+    # Check if it exists
+    element = get_host(fcache, identifier)
+
+    if not element:
+        print(f"Cound not find {identifier} in the cache")
+        sys.exit(1)
+
+    if element:
+        fcache["data"].remove(element)
+
+    save_cache(fcache)
+
+def handle_ssh(identifier):
+    fcache = load_cache()
+
+    # Check if it exists
+    element = get_host(fcache, identifier)
+
+    if not element:
+        print(f"Cound not find {identifier} in the cache")
+        sys.exit(1)
+
+    if element["pem"]:
+        print("ssh -i %s %s" % (element["pem"], element["address"]))
+    else:
+        print("ssh %s" % (element["address"]))
+
+    sys.exit(0)
+
+
+def handle_rsync(identifier):
+    fcache = load_cache()
+
+    # Check if it exists
+    element = get_host(fcache, identifier)
+
+    if not element:
+        print(f"Cound not find {identifier} in the cache")
+        sys.exit(1)
+
+    if element["pem"]:
+        print("-e \"ssh -i %s\" %s" % (element["pem"], element["address"]))
+    else:
+        print("%s" % (element["address"]))
+
+    sys.exit(0)
+
+# Create main parser
+parser = argparse.ArgumentParser()
+
+# Create subparser
+subparsers = parser.add_subparsers(dest="command")
+
+# Create 'add' parser
+parser_add = subparsers.add_parser('add', help="add a host to the cache")
+parser_add.add_argument("name", help="host name")
+parser_add.add_argument("address", help="host address - can also be user@address")
+parser_add.add_argument("--pem", help="pem file to use")
+
+# Create 'rem' parser
+parser_rem = subparsers.add_parser('rem', help="remove a host from the cache")
+parser_rem.add_argument("identifier", help="can be either name or address")
+
+# Create other parsers
+subparsers.add_parser('list', help="list hosts")
+parser_ssh = subparsers.add_parser('ssh', help="format ssh to host")
+parser_ssh.add_argument("identifier", help="can be either name or address")
+
+parser_rsync = subparsers.add_parser('rsync', help="format rsync to host")
+parser_rsync.add_argument("identifier", help="can be either name or address")
+
+# Parse the given args
+args = parser.parse_args()
+
+# Handle each command
+if args.command == "add":
+    handle_add(args.name, args.address, args.pem)
+
+if args.command == "rem":
+    handle_rem(args.identifier)
+
+if args.command == "list":
+    handle_list()
+
+if args.command == "ssh":
+    handle_ssh(args.identifier)
+
+if args.command == "rsync":
+    handle_rsync(args.identifier)

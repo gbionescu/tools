@@ -1,0 +1,17 @@
+#!/bin/bash
+
+if [ $# -ne 3 ]; then
+    echo -e "Help:\n\t$0 alias local_source remote_destination"
+    exit 1
+fi    
+
+# Get the command
+cmd=$(htool rsync $1)
+rval=$?
+
+if [ $rval -eq 0 ]; then
+    shift
+    rsync -avzLP $1 "$cmd":$2
+else
+    echo $cmd
+fi

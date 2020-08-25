@@ -1,0 +1,17 @@
+#!/bin/bash
+
+if [ $# -eq 0 ]; then
+    echo -e "Help:\n\t$0 alias other parameters"
+    exit 1
+fi
+
+# Get the command
+cmd=$(htool ssh $1)
+rval=$?
+
+if [ $rval -eq 0 ]; then
+    shift
+    $cmd $@
+else
+    echo $cmd
+fi
