@@ -114,3 +114,33 @@ set_vcpu_memsize() {
                   \"ht_enabled\": false
              }"
 }
+
+set_rate_limiter() {
+    curl --unix-socket "$API_SOCK" -i \
+      -X PATCH 'http://localhost/network-interfaces/eth0' \
+      -H 'Accept: application/json' \
+      -H 'Content-Type: application/json' \
+      -d '{
+          "iface_id": "eth0",
+            "rx_rate_limiter": {
+                "bandwidth": {
+                    "size": 10485760,
+                    "refill_time": 1000
+                },
+                "ops": {
+                    "size": 2000,
+                    "refill_time": 1000
+                }
+            },
+            "tx_rate_limiter": {
+                "bandwidth": {
+                    "size": 10485760,
+                    "refill_time": 1000
+                },
+                "ops": {
+                    "size": 2000,
+                    "refill_time": 1000
+                }
+            }
+        }'
+}
